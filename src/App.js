@@ -46,9 +46,10 @@ class App extends React.Component {
     this.fetchWeather = this.fetchWeather.bind(this);
   }
 
-
   async fetchWeather() {
     try {
+      this.setState({ isLoading: true });
+      this.setState({ weather: {} })
       // 1) Getting location (geocoding)
       const geoRes = await fetch(
         `https://geocoding-api.open-meteo.com/v1/search?name=${this.state.location}`
@@ -62,6 +63,7 @@ class App extends React.Component {
         geoData.results.at(0);
       this.setState({ displayLocation: `${name} ${convertToFlag(country_code)}` });
       console.log(`${name} ${convertToFlag(country_code)}`);
+
       // 2) Getting actual weather
       const weatherRes = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&timezone=${timezone}&daily=weathercode,temperature_2m_max,temperature_2m_min`
@@ -70,6 +72,8 @@ class App extends React.Component {
       this.setState({ weather: weatherData.daily });
     } catch (err) {
       console.error(err);
+    } finally {
+      this.setState({ isLoading: false })
     }
   }
 
@@ -86,8 +90,63 @@ class App extends React.Component {
             onChange={e => this.setState({ location: e.target.value })}
           ></input>
         </div>
+
         <button onClick={this.fetchWeather}>Search</button>
+
+        {this.state.isLoading
+          && <p className="loader">Loading...</p>}
+
+        {this.state.weather.weathercode && < Weather
+          weather={this.state.weather}
+          location={this.state.displayLocation}
+        />}
       </div>
+    )
+  }
+}
+
+class Weather extends React.Component {
+  render() {
+    const {
+      temperature_2m_max: max,
+      temperature_2m_min: min,
+      time: dates,
+      weathercode: code
+    } = this.props.weather;
+
+    return (
+      <div>
+        <h2>Weather {this.props.location}</h2>
+        <ul className="weather">
+          {dates.map((date, i) => (
+            <Day
+              max={max[i]}
+              min={min[i]}
+              date={date}
+              code={code[i]}
+              key={date}
+              isToday={i === 0}
+              isTommorow={i === 1}
+            />
+          ))}
+        </ul>
+      </div>
+    )
+  }
+}
+
+class Day extends React.Component {
+  render() {
+    const { max, min, date, code, isToday, isTommorow } = this.props;
+
+    return (
+      <li className="day">
+        <span>{getWeatherIcon(code)}</span>
+        <p>{isToday ? "Today" : isTommorow ? "Tommorow" : formatDay(date)}</p>
+        <p>
+          {Math.floor(min)}&deg; &mdash; <strong>{Math.ceil(max)}&deg;</strong>
+        </p>
+      </li>
     )
   }
 }
