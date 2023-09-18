@@ -36,38 +36,30 @@ function formatDay(dateStr) {
 class App extends React.Component {
 
   state = {
-    location: "Delhi",
+    location: "",
     isLoading: false,
     displayLocation: '',
     weather: {}
   };
 
-  constructor(props) {
-    super(props);
-
-    this.fetchWeather = this.fetchWeather.bind(this);
-  }
-
-  setLocation = (e) => {
-    this.setState({ location: e.target.value })
-  }
-
   fetchWeather = async () => {
     try {
+      if (this.state.location.length < 2) {
+        this.setState({ weather: {} });
+        return;
+      }
       this.setState({ isLoading: true });
       // 1) Getting location (geocoding)
       const geoRes = await fetch(
         `https://geocoding-api.open-meteo.com/v1/search?name=${this.state.location}`
       );
       const geoData = await geoRes.json();
-      console.log(geoData);
 
       if (!geoData.results) throw new Error("Location not found");
 
       const { latitude, longitude, timezone, name, country_code } =
         geoData.results.at(0);
       this.setState({ displayLocation: `${name} ${convertToFlag(country_code)}` });
-      console.log(`${name} ${convertToFlag(country_code)}`);
 
       // 2) Getting actual weather
       const weatherRes = await fetch(
@@ -82,17 +74,31 @@ class App extends React.Component {
     }
   }
 
+  // // sideEffect with empty dependency array []
+  // componentDidMount() {
+  //   this.fetchWeather();
+  // }
+
+  // sideEffect with dependency array and execute only after re-render, not at initial mount like in function comopnent 
+  componentDidUpdate(prevProps, prevStates) {
+    if (this.state.location !== prevStates.location) {
+      this.fetchWeather();
+    }
+  }
+
   render() {
 
     return (
       <div className="app">
         <h1>Classy Weather</h1>
-        <Input
-          location={this.state.location}
-          setLocation={this.setLocation}
-        />
-
-        <button onClick={this.fetchWeather}>Search</button>
+        <div>
+          <input
+            type="text"
+            placeholder="Search Via Location"
+            value={this.state.location}
+            onChange={e => this.setState({ location: e.target.value })}
+          ></input>
+        </div>
 
         {this.state.isLoading
           && <p className="loader">Loading...</p>}
@@ -101,21 +107,6 @@ class App extends React.Component {
           weather={this.state.weather}
           location={this.state.displayLocation}
         />}
-      </div>
-    )
-  }
-}
-
-class Input extends React.Component {
-  render() {
-    return (
-      <div>
-        <input
-          type="text"
-          placeholder="Search Via Location"
-          value={this.props.location}
-          onChange={this.setLocation}
-        ></input>
       </div>
     )
   }
